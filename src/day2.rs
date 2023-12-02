@@ -1,6 +1,7 @@
 pub fn main() {
     let input = std::fs::read_to_string("input/day2").expect("No input");
     println!("Part one: {}", part_one(&input));
+    println!("Part two: {}", part_two(&input));
 }
 
 #[derive(Debug, PartialEq)]
@@ -91,7 +92,20 @@ fn part_one(input: &str) -> i32 {
 }
 
 fn part_two(input: &str) -> i32 {
-    0
+    let input = parse_input(input);
+    let mut acc = 0;
+    for game in input {
+        let mut red = 0;
+        let mut green = 0;
+        let mut blue = 0;
+        for set in game.sets {
+            red = red.max(set.red);
+            green = green.max(set.green);
+            blue = blue.max(set.blue);
+        }
+        acc += red * green * blue;
+    }
+    acc
 }
 
 #[cfg(test)]
@@ -133,5 +147,10 @@ mod tests {
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(INPUT), 8);
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(INPUT), 2286);
     }
 }
