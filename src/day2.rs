@@ -67,6 +67,39 @@ fn parse_input(input: &str) -> Vec<Game> {
     output
 }
 
+fn parse_input_sscanf(input: &str) -> Option<Vec<Game>> {
+    let mut output = vec![];
+    for game in input.lines() {
+        let mut split = game.split(':');
+        let game_id = split.nth(0)?.trim();
+        let game_id = sscanf::sscanf!(game_id, "Game {}", i32).ok()?;
+
+        let mut game = Game {
+            id: game_id,
+            sets: vec![],
+        };
+
+        let sets = split.next()?;
+        for set in sets.split(';') {
+            let mut cube_set = CubeSet::new(0, 0, 0);
+            for val in set.split(',') {
+                if let Ok((num, color)) = sscanf::sscanf!(val.trim(), "{} {}", i32, &str) {
+                    match color {
+                        "red" => cube_set.red = num,
+                        "green" => cube_set.green = num,
+                        "blue" => cube_set.blue = num,
+                        _ => {}
+                    }
+                }
+            }
+            game.sets.push(cube_set);
+        }
+        output.push(game);
+    }
+
+    Some(output)
+}
+
 fn part_one(input: &str) -> i32 {
     let input = parse_input(input);
     let max_red = 12;
@@ -152,5 +185,10 @@ mod tests {
     #[test]
     fn test_part_two() {
         assert_eq!(part_two(INPUT), 2286);
+    }
+
+    #[test]
+    fn test_sscanf() {
+        assert_eq!(parse_input(INPUT), parse_input_sscanf(INPUT).unwrap());
     }
 }
