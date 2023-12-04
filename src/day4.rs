@@ -1,7 +1,7 @@
 pub fn main() {
     let input = std::fs::read_to_string("input/day4.txt").expect("No input");
     println!("Part one: {}", part_one(&input));
-    // println!("Part two: {}", part_two(&input));
+    println!("Part two: {}", part_two(&input));
 }
 
 fn part_one(input: &str) -> i32 {
@@ -32,8 +32,34 @@ fn part_one(input: &str) -> i32 {
     acc
 }
 
+fn split_once<'a>(input: &'a str, pat: char) -> (&'a str, &'a str) {
+    let mid = input.find(pat).unwrap_or(input.len());
+    let (head, tail) = input.split_at(mid);
+    (&head[..mid], &tail[1..])
+}
+
 fn part_two(input: &str) -> i32 {
-    0
+    let num_cards = input.lines().count();
+    let mut num_copies = vec![1; num_cards];
+
+    for (i, line) in input.lines().enumerate() {
+        let (_, tail) = split_once(line, ':');
+        let (head, tail) = split_once(tail, '|');
+        let winning = head
+            .split_whitespace()
+            .map(|s| s.parse::<i32>().unwrap())
+            .collect::<Vec<i32>>();
+        let elfs_cards = tail
+            .split_whitespace()
+            .map(|s| s.parse::<i32>().unwrap())
+            .collect::<Vec<i32>>();
+
+        let cards_won = winning.iter().filter(|c| elfs_cards.contains(c)).count();
+        for j in 1..=cards_won {
+            num_copies[i + j] += num_copies[i];
+        }
+    }
+    num_copies.iter().fold(0, |acc, n| acc + *n as i32)
 }
 
 #[cfg(test)]
@@ -50,5 +76,15 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11";
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(INPUT), 13);
+    }
+
+    #[test]
+    fn test_split() {
+        assert_eq!(split_once("Card 1 | numbers", '|'), ("Card 1 ", " numbers"));
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(INPUT), 30);
     }
 }
