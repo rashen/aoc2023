@@ -1,9 +1,10 @@
-const MAX_SIZE: usize = 140;
+const COLS: usize = 140;
+const RANK: usize = COLS * COLS;
 
 pub fn main() {
     let input = std::fs::read_to_string("input/day3.txt").expect("No input");
-    println!("Part one: {}", part_one(&input, MAX_SIZE));
-    println!("Part two: {}", part_two(&input, MAX_SIZE));
+    println!("Part one: {}", part_one(&input, COLS));
+    println!("Part two: {}", part_two(&input, COLS));
 }
 
 fn part_one(input: &str, size: usize) -> u32 {
@@ -36,7 +37,7 @@ fn part_one(input: &str, size: usize) -> u32 {
 }
 
 fn to_grid(input: &str) -> [[char; 140]; 140] {
-    let mut input_grid = [['.'; MAX_SIZE]; MAX_SIZE];
+    let mut input_grid = [['.'; COLS]; COLS];
     for (i, line) in input.lines().enumerate() {
         for (j, c) in line.chars().enumerate() {
             input_grid[i][j] = c;
@@ -45,11 +46,11 @@ fn to_grid(input: &str) -> [[char; 140]; 140] {
     input_grid
 }
 
-fn has_adjacent_symbol(grid: &[[char; MAX_SIZE]; MAX_SIZE], i: usize, j: usize) -> bool {
+fn has_adjacent_symbol(grid: &[[char; COLS]; COLS], i: usize, j: usize) -> bool {
     let min_i = if i > 0 { i - 1 } else { i };
     let min_j = if j > 0 { j - 1 } else { j };
-    let max_i = (i + 1).min(MAX_SIZE - 1);
-    let max_j = (j + 1).min(MAX_SIZE - 1);
+    let max_i = (i + 1).min(COLS - 1);
+    let max_j = (j + 1).min(COLS - 1);
     for i in min_i..=max_i {
         for j in min_j..=max_j {
             if grid[i][j] != '.' && grid[i][j].is_numeric() == false {
@@ -61,11 +62,11 @@ fn has_adjacent_symbol(grid: &[[char; MAX_SIZE]; MAX_SIZE], i: usize, j: usize) 
 }
 
 fn get_index(i: usize, j: usize) -> usize {
-    (i * MAX_SIZE) + j
+    (i * COLS) + j
 }
 
 fn part_two(input: &str, columns: usize) -> u64 {
-    let mut input_grid = ['.'; MAX_SIZE * MAX_SIZE];
+    let mut input_grid = ['.'; RANK];
     for (i, line) in input.lines().enumerate() {
         for (j, c) in line.chars().enumerate() {
             input_grid[get_index(i, j)] = c;
@@ -86,9 +87,9 @@ fn part_two(input: &str, columns: usize) -> u64 {
     acc
 }
 
-fn calc_adjacent_numbers(grid: &[char; MAX_SIZE * MAX_SIZE], index: usize) -> u64 {
+fn calc_adjacent_numbers(grid: &[char; RANK], index: usize) -> u64 {
     let index = index as i32;
-    let max_size = MAX_SIZE as i32;
+    let max_size = COLS as i32;
     let positions = [
         index - max_size - 1, // top left
         index - max_size,     // above
@@ -101,7 +102,7 @@ fn calc_adjacent_numbers(grid: &[char; MAX_SIZE * MAX_SIZE], index: usize) -> u6
     ];
     let mut numbers = [false; 8];
 
-    let max_index = (MAX_SIZE * MAX_SIZE) as i32;
+    let max_index = (COLS * COLS) as i32;
     for (j, &p) in positions.iter().enumerate() {
         if p > 0 && p < max_index {
             numbers[j] = grid[p as usize].is_numeric();
@@ -138,10 +139,10 @@ fn filter_adjacent_numbers(numbers: [bool; 8]) -> [bool; 8] {
     output
 }
 
-fn read_number(i: usize, grid: &[char; MAX_SIZE * MAX_SIZE]) -> u32 {
-    let left_boundary = (i / MAX_SIZE) * MAX_SIZE; // include
-    let right_boundary = ((i + 1) / MAX_SIZE) * MAX_SIZE;
-    let right_boundary = right_boundary.min(MAX_SIZE * MAX_SIZE); // exclusive
+fn read_number(i: usize, grid: &[char; COLS * COLS]) -> u32 {
+    let left_boundary = (i / COLS) * COLS; // inclusive
+    let right_boundary = ((i + 1) / COLS) * COLS;
+    let right_boundary = right_boundary.min(COLS * COLS); // exclusive
 
     // Find last index
     let mut index: i32 = i as i32;

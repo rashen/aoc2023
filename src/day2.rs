@@ -67,6 +67,7 @@ fn parse_input(input: &str) -> Vec<Game> {
     output
 }
 
+#[allow(dead_code)]
 fn parse_input_sscanf(input: &str) -> Option<Vec<Game>> {
     let mut output = vec![];
     for game in input.lines() {
