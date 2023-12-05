@@ -3,7 +3,7 @@ use sscanf::sscanf;
 pub fn main() {
     let input = std::fs::read_to_string("input/day5").expect("No input");
     println!("Part one: {}", part_one(&input));
-    // println!("Part two: {}", part_two(&input));
+    println!("Part two: {}", part_two(&input));
 }
 
 #[derive(Debug)]
@@ -52,25 +52,57 @@ fn part_one(input: &str) -> u64 {
     let (seeds, maps) = parse_input(input);
     let mut locations = vec![];
     for s in seeds {
-        let mut location: u64 = s as u64;
-        'layers: for layer in maps.iter() {
-            for map in layer {
-                let lower_bound = map.src as u64;
-                let upper_bound = lower_bound + map.range as u64;
-                if location >= lower_bound && location < upper_bound {
-                    let offset = location - lower_bound;
-                    location = map.dst as u64 + offset;
-                    continue 'layers;
-                }
-            }
-        }
-        locations.push(location);
+        locations.push(propagate_seed(s, &maps));
     }
     locations.sort_by(|a, b| a.cmp(b));
     locations[0]
 }
 
-fn part_two(input: &str) -> u32 {
+fn propagate_seed(seed: u32, maps: &[Vec<Map>]) -> u64 {
+    let mut location = seed as u64;
+    'layers: for layer in maps.iter() {
+        for map in layer.iter() {
+            let lower_bound = map.src as u64;
+            let upper_bound = lower_bound + map.range as u64;
+            if location >= lower_bound && location < upper_bound {
+                let offset = location - lower_bound;
+                location = map.dst as u64 + offset;
+                continue 'layers;
+            }
+        }
+    }
+    location
+}
+
+fn part_two(input: &str) -> u64 {
+    let (seeds, maps) = parse_input(input);
+    let mut seed_ranges = vec![];
+    for (i, start) in seeds.iter().enumerate().step_by(2) {
+        seed_ranges.push((*start, seeds[i + 1]));
+    }
+
+    for i in 0..u32::MAX {
+        let mut location = i as u64;
+        'layers: for layer in maps.iter().rev() {
+            for map in layer.iter().rev() {
+                let lower_bound = map.dst as u64;
+                let upper_bound = lower_bound + map.range as u64;
+                if location >= lower_bound && location < upper_bound {
+                    let offset = location - lower_bound;
+                    location = map.src as u64 + offset;
+                    continue 'layers;
+                }
+            }
+        }
+        // Compare to seed ranges
+        for (start, range) in seed_ranges.iter() {
+            let start = *start as u64;
+            let end = start + *range as u64;
+            if location >= start as u64 && location < end {
+                return i as u64;
+            }
+        }
+    }
     0
 }
 
@@ -115,5 +147,10 @@ humidity-to-location map:
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(INPUT), 35);
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(INPUT), 46);
     }
 }
