@@ -4,19 +4,21 @@ mod day1;
 mod day2;
 mod day3;
 mod day4;
+mod day5;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() == 1 {
-        println!("Specify a day");
-        return;
-    }
+    let entry_points = [day1::main, day2::main, day3::main, day4::main, day5::main];
 
-    match args[1].as_str() {
-        "1" => day1::main(),
-        "2" => day2::main(),
-        "3" => day3::main(),
-        "4" => day4::main(),
-        _ => {}
+    let args: Vec<String> = env::args().collect();
+    let mut index = entry_points.len() - 1;
+
+    if args.len() > 1 {
+        if let Ok(day) = args[1].as_str().parse::<usize>() {
+            index = day - 1;
+        }
+    } else {
+        println!("No day specified, running latest");
     };
+
+    entry_points[index]()
 }
