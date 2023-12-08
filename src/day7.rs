@@ -11,6 +11,7 @@ pub fn main() {
 #[allow(dead_code)] // False positive
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 enum CardLabel {
+    Joker,
     Two,
     Three,
     Four,
@@ -56,7 +57,7 @@ fn parse_line(line: &str) -> Option<(Cards, i32)> {
         if let Some(digit) = c.to_digit(10) {
             assert!(digit > 1 && digit < 10);
             unsafe {
-                card_hand[i] = std::mem::transmute(digit as u8 - 2);
+                card_hand[i] = std::mem::transmute(digit as u8 - 1);
             }
         } else {
             let label = match c {
@@ -73,15 +74,12 @@ fn parse_line(line: &str) -> Option<(Cards, i32)> {
     Some((card_hand, bid))
 }
 
-fn get_hand_type<T>(hand: [T; NUM_CARDS]) -> HandType
-where
-    T: PartialEq + PartialOrd + Ord + Clone,
-{
+fn get_hand_type(cards: Cards) -> HandType {
     let mut num_types = 1;
-    let mut sorted_hand = hand.clone();
-    sorted_hand.sort();
-    for i in 1..hand.len() {
-        if sorted_hand[i - 1] != sorted_hand[i] {
+    let mut sorted_cards = cards.clone();
+    sorted_cards.sort();
+    for i in 1..cards.len() {
+        if sorted_cards[i - 1] != sorted_cards[i] {
             num_types += 1;
         }
     }
@@ -89,7 +87,7 @@ where
     match num_types {
         1 => HandType::FiveOfAKind,
         2 => {
-            let num_of_one_type = hand.iter().filter(|&c| c == &hand[0]).count();
+            let num_of_one_type = cards.iter().filter(|&c| c == &cards[0]).count();
             if num_of_one_type == 1 || num_of_one_type == 4 {
                 HandType::FourOfAKind
             } else {
@@ -97,9 +95,18 @@ where
             }
         }
         3 => {
-            let num_of_first_type = sorted_hand.iter().filter(|&c| c == &sorted_hand[0]).count();
-            let num_of_second_type = sorted_hand.iter().filter(|&c| c == &sorted_hand[2]).count();
-            let num_of_third_type = sorted_hand.iter().filter(|&c| c == &sorted_hand[4]).count();
+            let num_of_first_type = sorted_cards
+                .iter()
+                .filter(|&c| c == &sorted_cards[0])
+                .count();
+            let num_of_second_type = sorted_cards
+                .iter()
+                .filter(|&c| c == &sorted_cards[2])
+                .count();
+            let num_of_third_type = sorted_cards
+                .iter()
+                .filter(|&c| c == &sorted_cards[4])
+                .count();
             if num_of_first_type
                 .max(num_of_second_type)
                 .max(num_of_third_type)
@@ -128,122 +135,68 @@ fn part_one(input: &str) -> u64 {
         }
     }
 
-    data.sort_by(|d1, d2| match d1.ty.cmp(&d2.ty) {
-        Ordering::Equal => {
-            for i in 0..d1.cards.len() {
-                match d1.cards[i].cmp(&d2.cards[i]) {
-                    Ordering::Equal => continue,
-                    o => return o,
-                }
-            }
-            Ordering::Equal
-        }
-        o => o,
-    });
-
-    let mut acc: u64 = 0;
-    for i in 0..data.len() {
-        let score = data[i].bid as u64 * (i + 1) as u64;
-        acc += score
-    }
-    acc
-}
-
-#[allow(dead_code)] // False positive
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
-enum CardLabelWithJoker {
-    Joker,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    Ten,
-    Queen,
-    King,
-    Ace,
-}
-impl From<CardLabel> for CardLabelWithJoker {
-    fn from(value: CardLabel) -> Self {
-        if value == CardLabel::Jack {
-            return CardLabelWithJoker::Joker;
-        }
-        unsafe {
-            let as_int: u8 = std::mem::transmute(value);
-            if value < CardLabel::Queen {
-                return std::mem::transmute(as_int + 1);
-            }
-            std::mem::transmute(as_int)
-        }
-    }
-}
-impl Into<CardLabel> for CardLabelWithJoker {
-    fn into(self) -> CardLabel {
-        if self == CardLabelWithJoker::Joker {
-            return CardLabel::Jack;
-        }
-        unsafe {
-            let as_int: u8 = std::mem::transmute(self);
-            if self < CardLabelWithJoker::Queen {
-                return std::mem::transmute(as_int - 1);
-            }
-            std::mem::transmute(as_int)
-        }
-    }
-}
-
-struct HandWithJoker {
-    cards: [CardLabelWithJoker; NUM_CARDS],
-    bid: i32,
-    highest_type: HandType,
+    sort_hands_by_rank(&mut data);
+    calculate_score(data)
 }
 
 fn part_two(input: &str) -> u64 {
     let mut hands = Vec::with_capacity(input.lines().count() - 1);
     for l in input.lines() {
-        if let Some((cards, bid)) = parse_line(l) {
-            let mut cards_with_joker = [CardLabelWithJoker::Joker; NUM_CARDS];
+        if let Some((mut cards, bid)) = parse_line(l) {
             for i in 0..cards.len() {
-                cards_with_joker[i] = cards[i].into()
+                if cards[i] == CardLabel::Jack {
+                    cards[i] = CardLabel::Joker;
+                }
             }
-            hands.push(HandWithJoker {
-                cards: cards_with_joker,
+            hands.push(Hand {
+                cards,
                 bid,
-                highest_type: HandType::None,
+                ty: HandType::None,
             });
         }
     }
 
-    // Get the highest numer for each card
+    // Get the highest type for each card
     for i in 0..hands.len() {
-        if hands[i].cards.contains(&CardLabelWithJoker::Joker) {
+        if hands[i].cards.contains(&CardLabel::Joker) {
             unsafe {
                 let max_index: u8 = std::mem::transmute(CardLabel::Ace);
                 for j in 0..=max_index {
                     let joker_replacement: CardLabel = std::mem::transmute(j);
                     let mut hand = [CardLabel::Two; NUM_CARDS];
                     for k in 0..NUM_CARDS {
-                        if hands[i].cards[k] == CardLabelWithJoker::Joker {
+                        if hands[i].cards[k] == CardLabel::Joker {
                             hand[k] = joker_replacement;
                         } else {
                             hand[k] = hands[i].cards[k].into();
                         }
                     }
 
-                    let score = get_hand_type(hand);
-                    hands[i].highest_type = hands[i].highest_type.max(score);
+                    let ty = get_hand_type(hand);
+                    hands[i].ty = hands[i].ty.max(ty);
                 }
             }
         } else {
             // No joker present
-            hands[i].highest_type = get_hand_type(hands[i].cards);
+            hands[i].ty = get_hand_type(hands[i].cards);
         }
     }
 
-    hands.sort_by(|d1, d2| match d1.highest_type.cmp(&d2.highest_type) {
+    sort_hands_by_rank(&mut hands);
+    calculate_score(hands)
+}
+
+fn calculate_score(hands: Vec<Hand>) -> u64 {
+    let mut acc: u64 = 0;
+    for i in 0..hands.len() {
+        let score = hands[i].bid as u64 * (i + 1) as u64;
+        acc += score
+    }
+    acc
+}
+
+fn sort_hands_by_rank(hands: &mut Vec<Hand>) {
+    hands.sort_by(|d1, d2| match d1.ty.cmp(&d2.ty) {
         Ordering::Equal => {
             for i in 0..d1.cards.len() {
                 match d1.cards[i].cmp(&d2.cards[i]) {
@@ -255,13 +208,6 @@ fn part_two(input: &str) -> u64 {
         }
         o => o,
     });
-
-    let mut acc: u64 = 0;
-    for i in 0..hands.len() {
-        let score = hands[i].bid as u64 * (i + 1) as u64;
-        acc += score
-    }
-    acc
 }
 
 #[cfg(test)]
@@ -291,19 +237,6 @@ QQQJA 483";
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(INPUT), 6440);
-    }
-
-    #[test]
-    fn test_card_label_into_from() {
-        unsafe {
-            let max_val: u8 = std::mem::transmute(CardLabel::Ace);
-            for i in 0..=max_val {
-                let a: CardLabel = std::mem::transmute(i);
-                let b: CardLabelWithJoker = a.into();
-                let c: CardLabel = b.into();
-                assert_eq!(a, c);
-            }
-        }
     }
 
     #[test]
